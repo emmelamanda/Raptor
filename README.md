@@ -19,22 +19,22 @@ Experiment protocols were developed and tested in the field by Amanda Emmel and 
 
 ## Variables
 
-ID: Goshawk name
+**ID**: Goshawk name
 
-Order: Ordered number of repeated experimental trial starting at 1 and repeating with every individual trial. Moving lure and stationary model trials are each numbered separately beginning at 1.
+**Order**: Ordered number of repeated experimental trial starting at 1 and repeating with every individual trial. Moving lure and stationary model trials are each numbered separately beginning at 1.
 
-Rep: 1 or 2 reflects whether this individual trial was the first or 2nd repetition at each experiment location (trials were repeated once with each color model/lure at each location, initial color was randomly selected for each location prior to experiments).
+**Rep**: 1 or 2 reflects whether this individual trial was the first or 2nd repetition at each experiment location (trials were repeated once with each color model/lure at each location, initial color was randomly selected for each location prior to experiments).
 
-Cover: O - Open habitat (Meadow with dead grass)   
-       F - Forest habitat (Ponderosa forest with sparse understory)
+**Cover**:    O - Open habitat (Meadow with dead grass)   
+              F - Forest habitat (Ponderosa forest with sparse understory)
 
-Ground: B - Brown, bare ground i.e. meadow or forest floor  
-        W - White, snowy ground
+**Ground**:   B - Brown, bare ground
+              W - White, snowy ground
 
-Lure: B - Brown wild-type agouti rabbit pelt  
-      W - White rabbit pelt
+**Lure**:     B - Brown wild-type agouti rabbit pelt  
+              W - White rabbit pelt
 
-Motion: M - Moving lure
-        S - Stationary model
+**Motion**:   M - Moving lure
+              S - Stationary model
 
-Dist: Attack distance (meters) or distance between hawk take-off and lure/model capture location.
+**Dist**: Attack distance (meters) or distance between hawk take-off and lure/model capture location.
