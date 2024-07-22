@@ -1,0 +1,362 @@
+---
+title: "Goshawk"
+author: "Amanda Emmel"
+date: "2024-06-10"
+output: html_document
+---
+```{r install}
+library(dplyr)
+library(ggplot2)
+require(AICcmodavg);  require(gclus);  require(SASmixed)
+library(Matrix)
+library(lme4)
+library(lmerTest)
+library(tidyr)
+library(AICcmodavg)
+gos <- read.csv("gos_lures.csv")
+```
+
+Format variables
+```{r class}
+gos$Cover <- as.factor(gos$Cover)
+gos$Ground <- as.factor(gos$Ground)
+gos$Lure <- as.factor(gos$Lure)
+gos$ID <- as.factor(gos$ID)
+gos$Motion <- as.factor(gos$Motion)
+gos$Rep <- as.factor(gos$Rep)
+class(gos$Cover)
+class(gos$Ground)
+class(gos$Lure)
+class(gos$ID)
+class(gos$Motion)
+class(gos$Order)
+gos$color <- paste(gos$Lure, gos$Ground)
+```
+
+Subsetting data by experiment type
+```{r subsets}
+move <- filter(gos, Motion=='M')
+still <- filter(gos, Motion=='S')
+#removing repeat trial from first exp. location
+still <-  still[-c(2),]
+
+open <- filter(gos, Cover=='O')
+forest <- filter(gos, Cover=='F')
+mopen <- filter(open, Motion=='M')
+sopen <- filter(open, Motion=='S')
+mforest <- filter(forest, Motion=='M')
+sforest <- filter(forest, Motion=='S')
+
+#Visiualizing data distribution and calculating mean values
+hist(move$Dist)
+mean(move$Dist, na.rm=TRUE)
+hist(still$Dist)
+mean(still$Dist)
+mean(mforest$Dist, na.rm=TRUE)
+mean(mean(mopen$Dist, na.rm=TRUE))
+```
+Checking that the repetition at each site (once per lure color) doesn't affect attack distance
+```{r}
+summary(rep <- lmer(Dist~Rep + (Order|ID), data=move))
+
+summary(glm(Dist ~ Rep, data=move))
+
+ggplot(move, aes(x=Rep, y=Dist, color=ID)) + geom_boxplot()
+
+#doesn't look like an issue
+```
+
+
+    _______________RESEARCH QUESTION_________________
+How does camouflage mismatch impact raptors’ ability to recognize and pursue prey?
+
+  H1: Raptors will be more successful in recognizing mismatched targets than camouflaged targets.
+    P1a: Raptors will have longer attack distances on mismatched lures compared to     camouflaged lures.
+    P1b: Raptors will have longer attack distances on mismatched stationary models compared to camouflaged models.
+    
+  H2: Raptors will be more successful in recognizing mismatched stationary models than camouflaged stationary models, but the effect of camouflage will be negligible for moving lures.
+    P1a0: Attack distance will be similar for moving lures regardless of camouflage or     mismatch.
+    P1b: Raptors will have longer attack distances on mismatched stationary models         compared to camouflaged models.
+
+SDist ~ Lure*ground
+```{r H1 H2 Testing}
+p1a <- lmer(Dist ~ Lure*Ground + Order + (1|ID), move)
+summary(p1a)
+plot(p1a)
+qqnorm(resid(p1a))
+
+p1b <- lmer(Dist ~ Lure*Ground + Order + (1|ID), still)
+summary(p1b)
+plot(p1b)
+qqnorm(resid(p1b))
+```
+P1a is not supported, but P1b is, which lends support for our second hypothesis: Mismatch does matter but not when prey is moving.
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+H3:  Increased cover in forest will ameliorate the positive effect of mismatch on raptor hunting success, given decreased visibility of prey.
+	 P3a: Raptor attack distances will be longer for mismatched lures compared to camouflaged lures in open habitat.
+  P3b0: Raptor attack distance will be similar between mismatched and camouflaged lures in forest.
+  P3c: Raptor attack distances will be longer for mismatched models compared to camouflaged models in open habitat.
+  P3d0: Attack distance will be similar between mismatched and camouflaged models in forest.
+
+H4: Open habitats will dilute the the positive effect of mismatch on raptor hunting success, given the conspicuousness of all prey in the open.
+  P3a0: Raptor attack distance will be similar between mismatched and camouflaged lures in open habitat.
+  MDist (Open) ~ Lure*Ground
+  P3b: Raptor attack distances will be longer for mismatched lures compared to camouflaged lures in forest.
+	MDist (Forest) ~ Lure*Ground 
+	P3c0: Attack distance will be similar between mismatched and camouflaged models in open habitat.
+  SDist(Open) ~ Lure*Ground
+  P3d: Raptor attack distances will be longer for mismatched models compared to camouflaged models in forest.
+  SDist (Forest)~ Lure*Ground
+
+```{r H3 Testing}
+p3a <- lmer(Dist ~ Lure*Ground + Order + (1|ID), mopen)
+summary(p3a)
+plot(p3a)
+qqnorm(resid(p3a))
+#p3a0 Null supported. Mismatch doesn't matter for moving lures in open.
+
+p3b <- lmer(Dist ~ Lure*Ground + Order + (1|ID), mforest)
+summary(p3b)
+plot(p3b)
+qqnorm(resid(p3b))
+#p3b0 Null supported. Mismatch doesn't matter for moving lures in forest.
+
+p3c <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sopen)
+summary(p3c)
+plot(p3c)
+qqnorm(resid(p3c))
+#p3c supported. Mismatch matters for still models in open.
+
+p3d <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sforest)
+summary(p3d)
+plot(p3d)
+qqnorm(resid(p3d))
+#p3d supported. Mismatch matters for still models in forest.
+
+#Double checking that habitat doesn't influence effects of mismatch using a 3-way interaction.
+p4a <- lmer(Dist ~ Lure*Ground*Cover + Order + (1|ID), move)
+summary(p4a)
+
+p4b <- lmer(Dist ~ Lure*Ground*Cover + Order + (1|ID), still)
+summary(p4b)
+```
+
+Plots
+```{r plots}
+#Basic Plots: Attack Distances by Camouflage Scenario
+
+print(plot_move_color <- ggplot(move, aes(x = color, y = Dist,  color = Ground,   fill = Lure))+ 
+  geom_boxplot() + theme_classic() +
+  xlab("") + ylab("Attack Distance (m)") + 
+  ggtitle("Attack Distance (m) by Camouflage Scenario", "Moving Lures") + 
+  scale_fill_manual(values= c("#CC9966", "snow")) +
+  scale_color_manual(values = c("burlywood3", "lightgray")) + 
+  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched","White Camouflaged")))
+
+print(plot_still_color <- ggplot(still, aes(x = color, y = Dist, color = Ground, fill = Lure)) +
+  geom_boxplot() + theme_classic() +
+  xlab("") + ylab("Attack Distance (m)") + 
+  ggtitle("", "Stationary Models") + 
+  scale_fill_manual(values= c("#CC9966", "snow")) +
+  scale_color_manual(values = c("burlywood3", "lightgray")) + 
+  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched", "White Camouflaged")))
+
+#Fig 1A, 1B: Attack Distances over time depicting hawk learning
+print(plot_move_learn <- ggplot(move, aes(x = Order, y = Dist, group = ID, 
+  color = ID, shape = Cover)) + geom_point()+ theme_classic() + xlim(0,63)+
+  geom_smooth(method = lm, linewidth = 1, se=F) +
+  xlab("Consecutive Trial Number") + ylab("Attack Distance (m)") + 
+  ggtitle("Hawk Learning: Attack Distance over Time", "Moving Lures") +
+  scale_color_manual(values = c("#66c2a5", "#8da0cb", "#fc8d62"))) + 
+  scale_shape_discrete(name = "Habitat", labels = c("Forest", "Open")) 
+
+print(plot2_still_learn <- ggplot(still, aes(x = Order, y = Dist, group = ID, color = ID, shape = Cover)) + geom_point()+ theme_classic() + xlim(0,63)+
+  geom_smooth(method = lm, linewidth = 1, se=F) +
+  xlab("Consecutive Trial Number") + ylab("Attack Distance (m)") + 
+  ggtitle("", "Stationary Models") +
+  scale_color_manual(values = c("#66c2a5", "#8da0cb", "#fc8d62"))) + 
+  scale_shape_discrete(name = "Habitat", labels = c("Forest", "Open"))
+
+#Fig 2A, 2B: Attack Distances by Camouflage Scenario and Habitat
+print(plot_move_hab <- ggplot(move, aes(x = color, y = Dist, color = Cover, fill = Lure), group = Ground) + geom_boxplot() +   theme_classic() + 
+   xlab("") + ylab("Attack Distance (m)") + 
+  ggtitle("Attack Distance (m) by Camouflage Scenario & Habitat", "Moving Lures") + 
+  scale_fill_manual(values= c("#CC9966", "snow")) +
+  scale_color_manual(values = c("darkgreen", "lightgray"), name = "Habitat", labels = c("Forest", "Open")) + 
+  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched", "White Camouflaged")))
+
+print(plot_still_hab <- ggplot(still, aes(x = color, y = Dist, color = Cover, fill = Lure), group = Ground) + geom_boxplot() +   theme_classic() + 
+   xlab("") + ylab("Attack Distance (m)") + 
+  ggtitle("", "Stationary Models") + 
+  scale_fill_manual(values= c("#CC9966", "snow")) +
+  scale_color_manual(values = c("darkgreen", "lightgray"), name = "Habitat", labels = c("Forest", "Open")) + 
+  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched", "White Camouflaged")))
+ 
+#Fig 2C: Visual Comparison of Moving and Stationary Attack Distances
+ print(plot_movemt <- ggplot(gos, aes(x = color, y = Dist, color = Motion, fill = Lure), group = Ground) + geom_boxplot() +   theme_classic() + 
+   xlab("") + ylab("Attack Distance (m)") + 
+  ggtitle("Attack Distance (m) of Moving and Stationary Targets by Camouflage Scenario") + 
+  scale_fill_manual(values= c("#CC9966", "snow")) +
+  scale_color_manual(values = c("lightgoldenrod3", "darkgray")) + ylim(0,60) +
+  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched", "White Camouflaged"))) + 
+   scale_fill_discrete(name = "Habitat", labels = c("Forest", "Open"))
+```
+
+Model selection
+```{r moving lure model selection}
+ Move_models <- list()
+ Move_models[[1]] <- lmer(Dist ~ Lure*Ground + Cover + (1|ID), move, REML=FALSE)
+ Move_models[[2]] <- lmer(Dist ~ Lure*Ground + (1|ID), move, REML=FALSE)
+ Move_models[[3]] <- lmer(Dist ~ Cover + (1|ID), move, REML=FALSE)
+ Move_models[[4]] <- lmer(Dist ~ (1|ID), move, REML=FALSE)
+ Move_models[[5]] <- lmer(Dist ~ Lure*Ground + Cover + Order + (1|ID), move, REML=FALSE)
+ Move_models[[6]] <- lmer(Dist ~ Lure*Ground + Order + (1|ID), move, REML=FALSE)
+ Move_models[[7]] <- lmer(Dist ~ Cover + Order + (1|ID), move, REML=FALSE)
+ Move_models[[8]] <- lmer(Dist ~ Order + (1|ID), move, REML=FALSE)
+
+    mov_names <- c("mov_all", "mov_mm_id", "mov_cov_id", "mov_id", "mov_all_ord",        "mov_mm_ord_id", "mov_cov_ord_id", "mov_ord_id")
+    
+    aicmov<-aictab(cand.set = Move_models, modnames = mov_names, sort = TRUE)
+  aicmov
+
+ summary(Move_models[[7]])
+ plot(Move_models[[7]])
+ qqnorm(resid((Move_models[[7]])))
+```
+
+Stationary model selection
+```{r stationary model selection}
+Still_models <- list()
+Still_models[[1]] <- lmer(Dist ~ Lure*Ground + Cover + (1|ID), still, REML=FALSE)
+Still_models[[2]] <- lmer(Dist ~ Lure*Ground + (1|ID), still, REML=FALSE)
+Still_models[[3]] <- lmer(Dist ~ Cover + (1|ID), still, REML=FALSE)
+Still_models[[4]] <- lmer(Dist ~ (1|ID), still, REML=FALSE)
+Still_models[[5]] <- lmer(Dist ~ Lure*Ground + Cover + Order + (1|ID), still, REML=FALSE)
+Still_models[[6]] <- lmer(Dist ~ Lure*Ground + Order + (1|ID), still, REML=FALSE)
+Still_models[[7]] <- lmer(Dist ~ Cover + Order + (1|ID), still, REML=FALSE)
+Still_models[[8]] <- lmer(Dist ~ Order + (1|ID), still, REML=FALSE)
+
+    stil_names <- c("stil_all", "stil_mm_id",  "stil_cov_id",  "stil_id", "still_all_ord", "still_mm_ord_id", "still_cov_ord_id", "still_ord_id")
+    
+    aicstil<-aictab(cand.set = Still_models, modnames = stil_names, sort = TRUE)
+  aicstil
+  
+ # CIs_still <- confint(Still_models[[1]])
+
+  summary(Still_models[[5]])
+  plot(Still_models[[5]])
+  qqnorm(resid((Still_models[[5]])))
+  
+  
+```
+
+Ratios of mismatched:matched attack distances at each experiment location
+```{r mismatch ratios}
+bmove <- filter(move, Ground=='B')
+wmove <- filter(move, Ground=='W')
+bstill <- filter(still, Ground=='B')
+bstill$Dist[bstill$Dist == 0] <- NA
+#bstill$Dist[bstill$Dist == 0] <- 1
+wstill <- filter(still, Ground=='W')
+bmf <- filter(mforest, Ground=='B')
+wmf <- filter(mforest, Ground=='W')
+bmo <- filter(mopen, Ground=='B')
+wmo <- filter(mopen, Ground=='W')
+bsf <- filter(bstill, Cover=='F')
+wsf <- filter(sforest, Ground=='W')
+bso <- filter(bstill, Cover=='F')
+wso <- filter(sopen, Ground=='W')
+
+camo_bmove <- subset(bmove, Lure=='B')
+mism_bmove <- subset(bmove, Lure=='W')
+merge_bmove <- merge(camo_bmove, mism_bmove, by='Loc', suffixes = c('_BB', '_WB'))
+merge_bmove$mmRatio <- merge_bmove$Dist_WB/merge_bmove$Dist_BB
+bmove_mmRatio <- mean(merge_bmove$mmRatio, na.rm=TRUE)
+
+camo_bstill <- subset(bstill, Lure=='B')
+mism_bstill <- subset(bstill, Lure=='W')
+merge_bstill <- merge(camo_bstill, mism_bstill, by='Loc', suffixes = c('_BB', '_WB'))
+merge_bstill$mmRatio <- merge_bstill$Dist_WB/merge_bstill$Dist_BB
+bstill_mmRatio <- mean(merge_bstill$mmRatio, na.rm=TRUE)
+
+camo_wmove <- subset(wmove, Lure=='W')
+mism_wmove <- subset(wmove, Lure=='B')
+merge_wmove <- merge(camo_wmove, mism_wmove, by='Loc', suffixes = c('_WW', '_BW'))
+merge_wmove$mmRatio <- merge_wmove$Dist_BW/merge_wmove$Dist_WW
+wmove_mmRatio <- mean(merge_wmove$mmRatio, na.rm=TRUE)
+
+camo_wstill <- subset(wstill, Lure=='W')
+mism_wstill <- subset(wstill, Lure=='B')
+merge_wstill <- merge(camo_wstill, mism_wstill, by='Loc', suffixes = c('_WW', '_BW'))
+merge_wstill$mmRatio <- merge_wstill$Dist_BW/merge_wstill$Dist_WW
+wstill_mmRatio <- mean(merge_wstill$mmRatio, na.rm=TRUE)
+
+camo_bmf <- subset(bmf, Lure=='B')
+mism_bmf <- subset(bmf, Lure=='W')
+merge_bmf <- merge(camo_bmf, mism_bmf, by='Loc', suffixes = c('_BB', '_WB'))
+merge_bmf$mmRatio <- merge_bmf$Dist_WB/merge_bmf$Dist_BB
+bmf_mmRatio <- mean(merge_bmf$mmRatio, na.rm=TRUE)
+
+camo_bmo <- subset(bmo, Lure=='B')
+mism_bmo <- subset(bmo, Lure=='W')
+merge_bmo <- merge(camo_bmo, mism_bmo, by='Loc', suffixes = c('_BB', '_WB'))
+merge_bmo$mmRatio <- merge_bmo$Dist_WB/merge_bmo$Dist_BB
+bmo_mmRatio <- mean(merge_bmo$mmRatio, na.rm=TRUE)
+
+camo_bsf <- subset(bsf, Lure=='B')
+mism_bsf <- subset(bsf, Lure=='W')
+merge_bsf <- merge(camo_bsf, mism_bsf, by='Loc', suffixes = c('_BB', '_WB'))
+merge_bsf$mmRatio <- merge_bsf$Dist_WB/merge_bsf$Dist_BB
+bsf_mmRatio <- mean(merge_bsf$mmRatio, na.rm=TRUE)
+
+camo_bso <- subset(bso, Lure=='B')
+mism_bso <- subset(bso, Lure=='W')
+merge_bso <- merge(camo_bso, mism_bso, by='Loc', suffixes = c('_BB', '_WB'))
+merge_bso$mmRatio <- merge_bso$Dist_WB/merge_bso$Dist_BB
+bso_mmRatio <- mean(merge_bso$mmRatio, na.rm=TRUE)
+
+camo_wmf <- subset(wmf, Lure=='W')
+mism_wmf <- subset(wmf, Lure=='B')
+merge_wmf <- merge(camo_wmf, mism_wmf, by='Loc', suffixes = c('_WW', '_BW'))
+merge_wmf$mmRatio <- merge_wmf$Dist_BW/merge_wmf$Dist_WW
+wmf_mmRatio <- mean(merge_wmf$mmRatio, na.rm=TRUE)
+
+camo_wmo <- subset(wmo, Lure=='W')
+mism_wmo <- subset(wmo, Lure=='B')
+merge_wmo <- merge(camo_wmo, mism_wmo, by='Loc', suffixes = c('_WW', '_BW'))
+merge_wmo$mmRatio <- merge_wmo$Dist_BW/merge_wmo$Dist_WW
+wmo_mmRatio <- mean(merge_wmo$mmRatio, na.rm=TRUE)
+
+camo_wsf <- subset(wsf, Lure=='W')
+mism_wsf <- subset(wsf, Lure=='B')
+merge_wsf <- merge(camo_wsf, mism_wsf, by='Loc', suffixes = c('_WW', '_BW'))
+merge_wsf$mmRatio <- merge_wsf$Dist_BW/merge_wsf$Dist_WW
+wsf_mmRatio <- mean(merge_wsf$mmRatio, na.rm=TRUE)
+
+camo_wso <- subset(wso, Lure=='W')
+mism_wso <- subset(wso, Lure=='B')
+merge_wso <- merge(camo_wso, mism_wso, by='Loc', suffixes = c('_WW', '_BW'))
+merge_wso$mmRatio <- merge_wso$Dist_BW/merge_wso$Dist_WW
+wso_mmRatio <- mean(merge_wso$mmRatio, na.rm=TRUE)
+
+
+mm_ratios <- c(bmove_mmRatio, bmf_mmRatio, bmo_mmRatio, wmove_mmRatio, wmf_mmRatio, wmo_mmRatio, bstill_mmRatio, bsf_mmRatio, bso_mmRatio, wstill_mmRatio, wsf_mmRatio, wso_mmRatio)
+ratio_labels <- c("Bare Ground Moving", "Bare Ground Moving, Forest", "Bare Ground Moving, Open", "Snow Moving", "Snow Moving, Forest", "Snow Moving, Open", "Bare Ground Stationary", "Bare Ground Stationary, Forest", "Bare Ground Stationary, Open", "Snow Stationary", "Snow Stationary, Forest", "Snow Stationary, Open")
+print(ratio_table <- data.frame(Label=ratio_labels, Value= mm_ratios))
+```
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
