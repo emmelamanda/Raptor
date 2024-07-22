@@ -25,16 +25,16 @@ Experiment protocols were developed and tested in the field by Amanda Emmel and 
 
 **Rep**: 1 or 2 reflects whether this individual trial was the first or 2nd repetition at each experiment location (trials were repeated once with each color model/lure at each location, initial color was randomly selected for each location prior to experiments).
 
-**Cover**:    O - Open habitat (Meadow with dead grass)   
+**Cover**:    O - Open habitat (Meadow with dead grass)     
               F - Forest habitat (Ponderosa forest with sparse understory)
 
-**Ground**:   B - Brown, bare ground
+**Ground**:   B - Brown, bare ground  
               W - White, snowy ground
 
-**Lure**:     B - Brown wild-type agouti rabbit pelt  
+**Lure**:     B - Brown wild-type agouti rabbit pelt    
               W - White rabbit pelt
 
-**Motion**:   M - Moving lure
+**Motion**:   M - Moving lure  
               S - Stationary model
 
 **Dist**: Attack distance (meters) or distance between hawk take-off and lure/model capture location.
