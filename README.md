@@ -9,8 +9,13 @@
 ## Abstract
 Climate change effects on predator-prey interactions are poorly understood, with few study systems that explicitly connect antipredator traits to climate drivers. Within 21 seasonally color polyphenic species, most populations molt into a winter white coat to camouflage with seasonal snow, however some individuals and populations remain invariant brown throughout the year. Using falconry-trained goshawks (Accipiter atricapillus), we experimentally evaluate how raptors perceive white and brown lures with varying background matching and assess how motion and habitat influence attack distance. We find that mismatch influences raptor detection of stationary models, but not moving lures. Attack distances were greater in open habitats compared to forest. Mismatch with substrate significantly increased detectability of white hare models relative to mismatched brown hare models, suggesting unequal predation risk for mismatched white and brown morphs. Our results may imply fitness differences for winter white and invariant brown morphs of seasonally polyphenic species under future climate scenarios.
 
-DATA: gos_lures.csv  
-CODE: goshawk_lures.Rmd
+## Experiments
+Experiment protocols were developed and tested in the field by Amanda Emmel and Nate Bickford. Nate completed the repeated trials with his goshawks over the course of several weeks.
+
+## Files
+
+**DATA**: gos_lures.csv  
+**CODE**: goshawk_lures.Rmd
 
 ## Variables
 
