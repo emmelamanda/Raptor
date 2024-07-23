@@ -31,13 +31,12 @@ Data files and variables
 **Dist**: Attack distance (meters) or distance between hawk take-off and lure/model capture location.
 
 ## Code scripts and workflow
-
     1. goshawk_lures.Rmd
     Data formatting and analysis using linear mixed effects models to assess effects on goshawk atack     
     distance
 
 **SOFTWARE VERSIONS**
-R version 4.3.2 (2023-10-31) "Eye Holes"
+R version 4.3.2 (2023-10-31) "Eye Holes"  
 Packages: dplyr, ggplot2, AICcmodavg, gclus, SASmixed, Matrix, lme4, lmerTest, tidyr
 
 
