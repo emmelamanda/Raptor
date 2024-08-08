@@ -1,6 +1,6 @@
 ---
 title: "Goshawk"
-author: "Amanda Emmel"
+author: "Anonymous"
 date: "2024-06-10"
 output: html_document
 ---
