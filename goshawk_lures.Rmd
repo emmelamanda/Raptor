@@ -1,7 +1,7 @@
 ---
 title: "Goshawk"
-author: "Anonymous"
-date: "2024-06-10"
+author: "Amanda Emmel"
+date: "2025-01-20"
 output: html_document
 ---
 ```{r install}
@@ -13,7 +13,7 @@ library(lme4)
 library(lmerTest)
 library(tidyr)
 library(AICcmodavg)
-gos <- read.csv("gos_lures.csv")
+gos <- read.csv("goshawk_lures.csv")
 ```
 
 Format variables
@@ -37,9 +37,6 @@ Subsetting data by experiment type
 ```{r subsets}
 move <- filter(gos, Motion=='M')
 still <- filter(gos, Motion=='S')
-#removing repeat trial from first exp. location
-still <-  still[-c(2),]
-
 open <- filter(gos, Cover=='O')
 forest <- filter(gos, Cover=='F')
 mopen <- filter(open, Motion=='M')
@@ -71,27 +68,55 @@ ggplot(move, aes(x=Rep, y=Dist, color=ID)) + geom_boxplot()
 How does camouflage mismatch impact raptors’ ability to recognize and pursue prey?
 
   H1: Raptors will be more successful in recognizing mismatched targets than camouflaged targets.
-    P1a: Raptors will have longer attack distances on mismatched lures compared to     camouflaged lures.
+    P1a: Raptors will have longer attack distances on mismatched lures compared to camouflaged lures.
     P1b: Raptors will have longer attack distances on mismatched stationary models compared to camouflaged models.
     
   H2: Raptors will be more successful in recognizing mismatched stationary models than camouflaged stationary models, but the effect of camouflage will be negligible for moving lures.
-    P1a0: Attack distance will be similar for moving lures regardless of camouflage or     mismatch.
-    P1b: Raptors will have longer attack distances on mismatched stationary models         compared to camouflaged models.
+    P1a0: Attack distance will be similar for moving lures regardless of camouflage or mismatch.
+    P1b: Raptors will have longer attack distances on mismatched stationary models compared to camouflaged models.
 
-SDist ~ Lure*ground
 ```{r H1 H2 Testing}
-p1a <- lmer(Dist ~ Lure*Ground + Order + (1|ID), move)
+p1a <- lmer(Dist ~ Lure*Ground + Order + Cover + (1|ID), move)
 summary(p1a)
 plot(p1a)
 qqnorm(resid(p1a))
+confint(p1a)
 
-p1b <- lmer(Dist ~ Lure*Ground + Order + (1|ID), still)
+p1b <- lmer(Dist ~ Lure*Ground + Order + Cover + (1|ID), still)
 summary(p1b)
 plot(p1b)
 qqnorm(resid(p1b))
+confint(p1b)
 ```
 P1a is not supported, but P1b is, which lends support for our second hypothesis: Mismatch does matter but not when prey is moving.
 
+```{r Calculating Predicted Attack Distances}
+#Moving Lures
+ordeff <- 0.17961*30
+BBmf <-6.32831 + ordeff
+BWmf <- BBmf +  0.32834
+WBmf <- BBmf + 1.33396
+WWmf <- BWmf + 1.33396 -1.90947
+
+mopeff <- 20.06653
+BBmo <- BBmf + mopeff
+BWmo <- BWmf + mopeff
+WBmo <- WBmf + mopeff
+WWmo <- WWmf + mopeff
+
+#Stationary Models
+sordeff <- 0.08043 * 30
+BBsf <- 2.39625 + sordeff
+BWsf <- BBsf + -0.28112
+WBsf <- BBsf + 3.00206
+WWsf <- BWsf + 3.00206 - 3.07505
+
+sopeff <- 2.85244
+BBso <- BBsf + sopeff
+BWso <- BWsf + sopeff
+WBso <- WBsf + sopeff
+WWso <- WWsf + sopeff
+```
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 H3:  Increased cover in forest will ameliorate the positive effect of mismatch on raptor hunting success, given decreased visibility of prey.
@@ -102,14 +127,10 @@ H3:  Increased cover in forest will ameliorate the positive effect of mismatch o
 
 H4: Open habitats will dilute the the positive effect of mismatch on raptor hunting success, given the conspicuousness of all prey in the open.
   P3a0: Raptor attack distance will be similar between mismatched and camouflaged lures in open habitat.
-  MDist (Open) ~ Lure*Ground
   P3b: Raptor attack distances will be longer for mismatched lures compared to camouflaged lures in forest.
-	MDist (Forest) ~ Lure*Ground 
 	P3c0: Attack distance will be similar between mismatched and camouflaged models in open habitat.
-  SDist(Open) ~ Lure*Ground
   P3d: Raptor attack distances will be longer for mismatched models compared to camouflaged models in forest.
-  SDist (Forest)~ Lure*Ground
-
+  
 ```{r H3 Testing}
 p3a <- lmer(Dist ~ Lure*Ground + Order + (1|ID), mopen)
 summary(p3a)
@@ -143,68 +164,91 @@ p4b <- lmer(Dist ~ Lure*Ground*Cover + Order + (1|ID), still)
 summary(p4b)
 ```
 
-Plots
-```{r plots}
-#Basic Plots: Attack Distances by Camouflage Scenario
 
-print(plot_move_color <- ggplot(move, aes(x = color, y = Dist,  color = Ground,   fill = Lure))+ 
-  geom_boxplot() + theme_classic() +
-  xlab("") + ylab("Attack Distance (m)") + 
-  ggtitle("Attack Distance (m) by Camouflage Scenario", "Moving Lures") + 
-  scale_fill_manual(values= c("#CC9966", "snow")) +
-  scale_color_manual(values = c("burlywood3", "lightgray")) + 
-  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched","White Camouflaged")))
+```{r Plots Fig1}
+#Plots: Fig 1 - Attack Distances by Camouflage Scenario
+library(ggplot2)
 
-print(plot_still_color <- ggplot(still, aes(x = color, y = Dist, color = Ground, fill = Lure)) +
-  geom_boxplot() + theme_classic() +
-  xlab("") + ylab("Attack Distance (m)") + 
-  ggtitle("", "Stationary Models") + 
-  scale_fill_manual(values= c("#CC9966", "snow")) +
-  scale_color_manual(values = c("burlywood3", "lightgray")) + 
-  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched", "White Camouflaged")))
+move.frame <- data.frame(Color=as.factor(move$color),
+                          Distance=move$Dist,
+                          Cover=move$Cover,
+                          Ground=move$Ground,
+                          Lure=move$Lure)
 
-#Fig 1A, 1B: Attack Distances over time depicting hawk learning
-print(plot_move_learn <- ggplot(move, aes(x = Order, y = Dist, group = ID, 
-  color = ID, shape = Cover)) + geom_point()+ theme_classic() + xlim(0,63)+
-  geom_smooth(method = lm, linewidth = 1, se=F) +
-  xlab("Consecutive Trial Number") + ylab("Attack Distance (m)") + 
-  ggtitle("Hawk Learning: Attack Distance over Time", "Moving Lures") +
-  scale_color_manual(values = c("#66c2a5", "#8da0cb", "#fc8d62"))) + 
-  scale_shape_discrete(name = "Habitat", labels = c("Forest", "Open")) 
+plot_move <- 
+  ggplot(move.frame, aes(x=Color, y = Distance, color = Ground, fill = Lure)) +
+  theme_classic() + 
+  geom_jitter(aes(y=move$Dist), size = 0.8, width = 0.1, alpha = 0.4) + 
+  geom_boxplot() +
+  facet_wrap(~Cover, labeller = labeller(Cover = c("F" = "Forest", "O" = "Open")))+
+  xlab("Brown                   White                          Brown                    White") +   ylab("Attack Distance (m)") + 
+  ggtitle("Attack Distances (m) of Model Prey by Mismatch Status & Habitat", "Moving Lures") +
+  scale_fill_manual(values= c("#CC9966", "snow"), guide=FALSE) +
+  scale_color_manual(values = c("burlywood4", "goldenrod1"), labels = c("Bare Ground", "Snow")) +
+  scale_x_discrete(labels=c("Match", "Mismatch", "Mismatch", "Match"))
 
-print(plot2_still_learn <- ggplot(still, aes(x = Order, y = Dist, group = ID, color = ID, shape = Cover)) + geom_point()+ theme_classic() + xlim(0,63)+
-  geom_smooth(method = lm, linewidth = 1, se=F) +
-  xlab("Consecutive Trial Number") + ylab("Attack Distance (m)") + 
+plot_move
+
+still.frame <- data.frame(Color=as.factor(still$color),
+                                Distance=still$Dist,
+                                Cover=still$Cover,
+                                Ground=still$Ground,
+                                Lure=still$Lure)
+plot_still <- 
+  ggplot(still.frame, aes(x=Color, y = Distance, color = Ground, fill = Lure)) +
+  theme_classic() + 
+  geom_jitter(aes(y=still$Dist), size = 0.8, width = 0.1, alpha = 0.4) + 
+  geom_boxplot() +
+  facet_wrap(~Cover, labeller = labeller(Cover = c("F" = "Forest", "O" = "Open")))+
+  xlab("Brown                   White                          Brown                    White") +   ylab("Attack Distance (m)") + 
   ggtitle("", "Stationary Models") +
-  scale_color_manual(values = c("#66c2a5", "#8da0cb", "#fc8d62"))) + 
-  scale_shape_discrete(name = "Habitat", labels = c("Forest", "Open"))
+  scale_fill_manual("Model", values= c("#CC9966", "snow"), guide=FALSE) +
+  scale_color_manual(values = c("burlywood4", "goldenrod1"), labels = c("Bare Ground", "Snow")) +
+  scale_x_discrete(labels=c("Match", "Mismatch", "Mismatch", "Match"))
 
-#Fig 2A, 2B: Attack Distances by Camouflage Scenario and Habitat
-print(plot_move_hab <- ggplot(move, aes(x = color, y = Dist, color = Cover, fill = Lure), group = Ground) + geom_boxplot() +   theme_classic() + 
-   xlab("") + ylab("Attack Distance (m)") + 
-  ggtitle("Attack Distance (m) by Camouflage Scenario & Habitat", "Moving Lures") + 
-  scale_fill_manual(values= c("#CC9966", "snow")) +
-  scale_color_manual(values = c("darkgreen", "lightgray"), name = "Habitat", labels = c("Forest", "Open")) + 
-  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched", "White Camouflaged")))
-
-print(plot_still_hab <- ggplot(still, aes(x = color, y = Dist, color = Cover, fill = Lure), group = Ground) + geom_boxplot() +   theme_classic() + 
-   xlab("") + ylab("Attack Distance (m)") + 
-  ggtitle("", "Stationary Models") + 
-  scale_fill_manual(values= c("#CC9966", "snow")) +
-  scale_color_manual(values = c("darkgreen", "lightgray"), name = "Habitat", labels = c("Forest", "Open")) + 
-  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched", "White Camouflaged")))
- 
-#Fig 2C: Visual Comparison of Moving and Stationary Attack Distances
- print(plot_movemt <- ggplot(gos, aes(x = color, y = Dist, color = Motion, fill = Lure), group = Ground) + geom_boxplot() +   theme_classic() + 
-   xlab("") + ylab("Attack Distance (m)") + 
-  ggtitle("Attack Distance (m) of Moving and Stationary Targets by Camouflage Scenario") + 
-  scale_fill_manual(values= c("#CC9966", "snow")) +
-  scale_color_manual(values = c("lightgoldenrod3", "darkgray")) + ylim(0,60) +
-  scale_x_discrete(labels=c("Brown Camouflaged", "Brown Mismatched", "White Mismatched", "White Camouflaged"))) + 
-   scale_fill_discrete(name = "Habitat", labels = c("Forest", "Open"))
+plot_still
 ```
 
-Model selection
+```{r Plots FigA1 }
+#Figure A1: Hawk Learning over Time 
+learn_mopen <- lmer(Dist ~ Lure*Ground + Order + (1|ID), mopen)
+summary(learn_mopen)
+confint(learn_mopen)
+
+learn_mforest <- lmer(Dist ~ Lure*Ground + Order + (1|ID), mforest)
+summary(learn_mforest)
+confint(learn_mforest)
+
+ plot_move_learn <- ggplot(move, aes(x = Order, y = Dist, group = ID, 
+         color = ID, shape = Cover)) + geom_point(size=2)+ theme_classic() + xlim(0,63) +
+  xlab("Consecutive Trial Number") + ylab("Attack Distance (m)") + 
+  ggtitle("Goshawk Learning: Attack Distance over Time", "Moving Lures") +
+  scale_color_manual(name = "Goshawk ID", values = c("#66c2a5", "#8da0cb", "#fc8d62")) + 
+  scale_shape_discrete(name = "Habitat", labels = c("Forest", "Open")) + 
+  geom_abline(slope = 0.28968, intercept = 22.28473, linewidth=0.5,  linetype=2, color="gray") + 
+  geom_abline(slope = 0.04169, intercept = 10.98061, linewidth=0.5, linetype=1, color="gray")
+
+plot_move_learn
+
+#Stationary Models
+learn_sopen <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sopen)
+summary(learn_sopen)
+
+learn_sforest <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sforest)
+summary(learn_sforest)
+
+plot_still_learn <- ggplot(still, aes(x = Order, y = Dist, group = ID, color = ID, shape = Cover)) + geom_point(size=2)+ theme_classic() + xlim(0,63) +
+  xlab("Consecutive Trial Number") + ylab("Attack Distance (m)") + 
+  ggtitle("", "Stationary Models") +
+  scale_color_manual(name = "Goshawk ID", values = c("#66c2a5", "#8da0cb", "#fc8d62")) + 
+  scale_shape_discrete(name = "Habitat", labels = c("Forest", "Open")) + 
+  geom_abline(slope = 0.06919, intercept = 5.79142, linewidth=0.7, linetype=2, color="gray") +
+  geom_abline(slope = 0.03924, intercept = 3.28573, linewidth=0.5, linetype=1, color="gray")
+  
+plot_still_learn
+```
+
+Model selection (Appendix)
 ```{r moving lure model selection}
  Move_models <- list()
  Move_models[[1]] <- lmer(Dist ~ Lure*Ground + Cover + (1|ID), move, REML=FALSE)
@@ -216,17 +260,19 @@ Model selection
  Move_models[[7]] <- lmer(Dist ~ Cover + Order + (1|ID), move, REML=FALSE)
  Move_models[[8]] <- lmer(Dist ~ Order + (1|ID), move, REML=FALSE)
 
-    mov_names <- c("mov_all", "mov_mm_id", "mov_cov_id", "mov_id", "mov_all_ord",        "mov_mm_ord_id", "mov_cov_ord_id", "mov_ord_id")
+    mov_names <- c("mov_all", "mov_mm_id", "mov_cov_id", "mov_id", "mov_all_ord",
+    "mov_mm_ord_id", "mov_cov_ord_id", "mov_ord_id")
     
     aicmov<-aictab(cand.set = Move_models, modnames = mov_names, sort = TRUE)
   aicmov
 
+#Top model of goshawk attack distance on moving lures includes habitat and learning, but not mismatch.
  summary(Move_models[[7]])
  plot(Move_models[[7]])
  qqnorm(resid((Move_models[[7]])))
 ```
 
-Stationary model selection
+
 ```{r stationary model selection}
 Still_models <- list()
 Still_models[[1]] <- lmer(Dist ~ Lure*Ground + Cover + (1|ID), still, REML=FALSE)
@@ -242,17 +288,14 @@ Still_models[[8]] <- lmer(Dist ~ Order + (1|ID), still, REML=FALSE)
     
     aicstil<-aictab(cand.set = Still_models, modnames = stil_names, sort = TRUE)
   aicstil
-  
- # CIs_still <- confint(Still_models[[1]])
 
+#Top model of goshawk attack distance on stationary models includes all covariates: mimsmatch, habitat, and learning.
   summary(Still_models[[5]])
   plot(Still_models[[5]])
   qqnorm(resid((Still_models[[5]])))
-  
-  
 ```
 
-Ratios of mismatched:matched attack distances at each experiment location
+Ratios of mismatched:matched attack distances at each experiment location (Appendix)
 ```{r mismatch ratios}
 bmove <- filter(move, Ground=='B')
 wmove <- filter(move, Ground=='W')
