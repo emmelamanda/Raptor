@@ -1,7 +1,7 @@
 ---
 title: "Goshawk"
 author: "Amanda Emmel"
-date: "2025-01-20"
+date: "2025-04-09"
 output: html_document
 ---
 ```{r install}
@@ -13,6 +13,8 @@ library(lme4)
 library(lmerTest)
 library(tidyr)
 library(AICcmodavg)
+library(merTools)
+library(MASS)
 gos <- read.csv("goshawk_lures.csv")
 ```
 
@@ -53,10 +55,9 @@ mean(mforest$Dist, na.rm=TRUE)
 mean(mean(mopen$Dist, na.rm=TRUE))
 ```
 Checking that the repetition at each site (once per lure color) doesn't affect attack distance
-```{r}
-summary(rep <- lmer(Dist~Rep + (Order|ID), data=move))
-
+```{r Check effect of repetition (twice) at each site}
 summary(glm(Dist ~ Rep, data=move))
+summary(glm(Dist ~ Rep, data=still))
 
 ggplot(move, aes(x=Rep, y=Dist, color=ID)) + geom_boxplot()
 
@@ -75,13 +76,15 @@ How does camouflage mismatch impact raptors’ ability to recognize and pursue p
     P1a0: Attack distance will be similar for moving lures regardless of camouflage or mismatch.
     P1b: Raptors will have longer attack distances on mismatched stationary models compared to camouflaged models.
 
-```{r H1 H2 Testing}
+```{r H1 H2 Testing, output results in Table A2 (Appendix)}
+#Modeling attack distance on moving lures
 p1a <- lmer(Dist ~ Lure*Ground + Order + Cover + (1|ID), move)
 summary(p1a)
 plot(p1a)
 qqnorm(resid(p1a))
 confint(p1a)
 
+#Modeling attack distance on stationary models
 p1b <- lmer(Dist ~ Lure*Ground + Order + Cover + (1|ID), still)
 summary(p1b)
 plot(p1b)
@@ -90,8 +93,120 @@ confint(p1b)
 ```
 P1a is not supported, but P1b is, which lends support for our second hypothesis: Mismatch does matter but not when prey is moving.
 
-```{r Calculating Predicted Attack Distances}
-#Moving Lures
+```{r Calculating Predicted Attack Distances - Table 1, Moving Lures}
+#Moving Lure Attack Distance Prediction and Propagation of Uncertainty (CIs) for Table 1
+
+lure_scenarios <- data.frame(Lure = c('B', 'B', 'B', 'B', 'W', 'W', 'W', 'W'),
+                           Ground = c('B', 'B', 'W', 'W', 'B', 'B', 'W', 'W'),
+                            Order = c(30, 30, 30, 30, 30, 30, 30, 30),
+                            Cover = c('O', 'F', 'O', 'F', 'O', 'F', 'O', 'F'),
+                            ID = c("Hawk", "Hawk", "Hawk", "Hawk", "Hawk", "Hawk", "Hawk", "Hawk"))
+
+# Ensure factor levels match the model
+lure_scenarios$Lure <- factor(lure_scenarios$Lure, levels = levels(move$Lure))
+lure_scenarios$Ground <- factor(lure_scenarios$Ground, levels = levels(move$Ground))
+lure_scenarios$Cover <- factor(lure_scenarios$Cover, levels = levels(move$Cover))
+
+# Generate model matrix for the new data (fixed effects only)
+X_new <- model.matrix(~ Lure*Ground + Order + Cover, data = lure_scenarios)
+
+# Extract fixed effect estimates
+p1a_beta_hat <- fixef(p1a)
+
+# Compute predicted values (fixed effects only)
+lure_scenarios$fit <- X_new %*% p1a_beta_hat
+View(lure_scenarios)
+
+# Compute standard errors (fixed effects only)
+p1a_vcov_matrix <- vcov(p1a)
+summary(p1a_vcov_matrix)
+p1a_se_fixed <- sqrt(diag(X_new %*% p1a_vcov_matrix %*% t(X_new)))
+
+# Extract variance of the random effect (ID-level variability)
+p1a_random_var <- as.numeric(VarCorr(p1a)$ID[1])  # Variance of the random intercept
+
+# Compute total standard error, including random effect variability
+p1a_se_total <- sqrt(p1a_se_fixed^2 + p1a_random_var)
+
+# Compute 95% confidence intervals
+lure_scenarios$lwr <- lure_scenarios$fit - 1.96 * p1a_se_total
+lure_scenarios$upr <- lure_scenarios$fit + 1.96 * p1a_se_total
+
+# View results
+move_pred_ci <- print(lure_scenarios[, c("fit", "lwr", "upr")])
+```
+
+```{r Calculating Predicted Attack Distances - Table 1, Stationary Models}
+#Stationary Model Attack Distance Prediction and Propagation of Uncertainty (CIs) for Table 1
+
+lure_scenarios <- data.frame(Lure = c('B', 'B', 'B', 'B', 'W', 'W', 'W', 'W'),
+                           Ground = c('B', 'B', 'W', 'W', 'B', 'B', 'W', 'W'),
+                            Order = c(30, 30, 30, 30, 30, 30, 30, 30),
+                            Cover = c('O', 'F', 'O', 'F', 'O', 'F', 'O', 'F'),
+                            ID = c("Hawk", "Hawk", "Hawk", "Hawk", "Hawk", "Hawk", "Hawk", "Hawk"))
+
+# Ensure factor levels match the model
+lure_scenarios$Lure <- factor(lure_scenarios$Lure, levels = levels(move$Lure))
+lure_scenarios$Ground <- factor(lure_scenarios$Ground, levels = levels(move$Ground))
+lure_scenarios$Cover <- factor(lure_scenarios$Cover, levels = levels(move$Cover))
+
+# Generate model matrix for the new data (fixed effects only)
+X_new <- model.matrix(~ Lure*Ground + Order + Cover, data = lure_scenarios)
+
+# Extract fixed effect estimates
+p1b_beta_hat <- fixef(p1b)
+
+# Compute predicted values (fixed effects only)
+lure_scenarios$fit <- X_new %*% p1b_beta_hat
+View(lure_scenarios)
+
+# Compute standard errors (fixed effects only)
+p1b_vcov_matrix <- vcov(p1b)
+summary(p1b_vcov_matrix)
+p1b_se_fixed <- sqrt(diag(X_new %*% p1b_vcov_matrix %*% t(X_new)))
+
+# Extract variance of the random effect (ID-level variability)
+p1b_random_var <- as.numeric(VarCorr(p1b)$ID[1])  # Variance of the random intercept
+
+# Compute total standard error, including random effect variability
+p1b_se_total <- sqrt(p1b_se_fixed^2 + p1b_random_var)
+
+# Compute 95% confidence intervals
+lure_scenarios$lwr <- lure_scenarios$fit - 1.96 * p1b_se_total
+lure_scenarios$upr <- lure_scenarios$fit + 1.96 * p1b_se_total
+
+# View results
+still_pred_ci <- print(lure_scenarios[, c("fit", "lwr", "upr")])
+
+```
+
+```{r Attack Distance Predictions and Confidence Intervals using fixed effects only}
+#The below predictions don't incorporate uncertainty from random effect ID 
+pred_move_scenarios <- predict(p1a, newdata = lure_scenarios,  se.fit = TRUE, re.form =~0)
+
+lower_pred_move <- pred_move_scenarios$fit - 1.96* pred_move_scenarios$se.fit
+upper_pred_move <- pred_move_scenarios$fit + 1.96* pred_move_scenarios$se.fit
+
+pred_CIs_move <- data.frame(Predicted = pred_move_scenarios$fit,
+                            Low_CI = lower_pred_move,
+                            Upper_CI = upper_pred_move)
+
+
+#STATIONARY MODELS
+pred_still_scenarios <-predict(p1b, newdata = lure_scenarios,  se.fit = TRUE, re.form =~0)
+
+lower_pred_still <- pred_still_scenarios$fit - 1.96* pred_still_scenarios$se.fit
+upper_pred_still <- pred_still_scenarios$fit + 1.96* pred_still_scenarios$se.fit
+
+pred_CIs_still <- data.frame(Predicted = pred_still_scenarios$fit,
+                            Low_CI = lower_pred_still,
+                            Upper_CI = upper_pred_still)
+```
+
+```{r By Hand Attack Distance Predictions}
+#Calculating predicted attack distances by hand through linear combinations just to double check
+
+#Moving Lures by hand
 ordeff <- 0.17961*30
 BBmf <-6.32831 + ordeff
 BWmf <- BBmf +  0.32834
@@ -104,7 +219,7 @@ BWmo <- BWmf + mopeff
 WBmo <- WBmf + mopeff
 WWmo <- WWmf + mopeff
 
-#Stationary Models
+#Stationary Models by hand
 sordeff <- 0.08043 * 30
 BBsf <- 2.39625 + sordeff
 BWsf <- BBsf + -0.28112
@@ -116,6 +231,8 @@ BBso <- BBsf + sopeff
 BWso <- BWsf + sopeff
 WBso <- WBsf + sopeff
 WWso <- WWsf + sopeff
+
+#they match the predicted values - all good
 ```
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -131,25 +248,29 @@ H4: Open habitats will dilute the the positive effect of mismatch on raptor hunt
 	P3c0: Attack distance will be similar between mismatched and camouflaged models in open habitat.
   P3d: Raptor attack distances will be longer for mismatched models compared to camouflaged models in forest.
   
-```{r H3 Testing}
+```{r H3 Testing: Mismatch and Habitat}
+#Moving lures in the Open
 p3a <- lmer(Dist ~ Lure*Ground + Order + (1|ID), mopen)
 summary(p3a)
 plot(p3a)
 qqnorm(resid(p3a))
 #p3a0 Null supported. Mismatch doesn't matter for moving lures in open.
 
+#Moving lures in the Forest
 p3b <- lmer(Dist ~ Lure*Ground + Order + (1|ID), mforest)
 summary(p3b)
 plot(p3b)
 qqnorm(resid(p3b))
 #p3b0 Null supported. Mismatch doesn't matter for moving lures in forest.
 
+#Stationary models in the Open
 p3c <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sopen)
 summary(p3c)
 plot(p3c)
 qqnorm(resid(p3c))
 #p3c supported. Mismatch matters for still models in open.
 
+#Stationary models in the Forest
 p3d <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sforest)
 summary(p3d)
 plot(p3d)
@@ -165,9 +286,8 @@ summary(p4b)
 ```
 
 
-```{r Plots Fig1}
-#Plots: Fig 1 - Attack Distances by Camouflage Scenario
-library(ggplot2)
+```{r Plots Fig2}
+#Plots: Figure 2 - Attack Distances by Camouflage Scenario
 
 move.frame <- data.frame(Color=as.factor(move$color),
                           Distance=move$Dist,
@@ -209,15 +329,30 @@ plot_still <-
 plot_still
 ```
 
-```{r Plots FigA1 }
-#Figure A1: Hawk Learning over Time 
+```{r Hawk Learning by Habitat, Figure 3: Hawk Learning over Time}
+#Mixed models comparing hawk learning in open and forest habitats
+
+#moving lures in the open
 learn_mopen <- lmer(Dist ~ Lure*Ground + Order + (1|ID), mopen)
 summary(learn_mopen)
 confint(learn_mopen)
 
+#moving lures in the forest
 learn_mforest <- lmer(Dist ~ Lure*Ground + Order + (1|ID), mforest)
 summary(learn_mforest)
 confint(learn_mforest)
+
+#stationary models in the open
+learn_sopen <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sopen)
+summary(learn_sopen)
+confint(learn_sopen)
+
+#stationary models in the forest
+learn_sforest <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sforest)
+summary(learn_sforest)
+confint(learn_sforest)
+
+#Figure 3: Hawk Learning over Time: Moving Lures
 
  plot_move_learn <- ggplot(move, aes(x = Order, y = Dist, group = ID, 
          color = ID, shape = Cover)) + geom_point(size=2)+ theme_classic() + xlim(0,63) +
@@ -230,13 +365,7 @@ confint(learn_mforest)
 
 plot_move_learn
 
-#Stationary Models
-learn_sopen <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sopen)
-summary(learn_sopen)
-
-learn_sforest <- lmer(Dist ~ Lure*Ground + Order + (1|ID), sforest)
-summary(learn_sforest)
-
+#Figure 3: Hawk Learning over Time: Stationary Models
 plot_still_learn <- ggplot(still, aes(x = Order, y = Dist, group = ID, color = ID, shape = Cover)) + geom_point(size=2)+ theme_classic() + xlim(0,63) +
   xlab("Consecutive Trial Number") + ylab("Attack Distance (m)") + 
   ggtitle("", "Stationary Models") +
@@ -249,7 +378,7 @@ plot_still_learn
 ```
 
 Model selection (Appendix)
-```{r moving lure model selection}
+```{r moving lure model selection, results in Table A3-A (Appendix)}
  Move_models <- list()
  Move_models[[1]] <- lmer(Dist ~ Lure*Ground + Cover + (1|ID), move, REML=FALSE)
  Move_models[[2]] <- lmer(Dist ~ Lure*Ground + (1|ID), move, REML=FALSE)
@@ -273,7 +402,7 @@ Model selection (Appendix)
 ```
 
 
-```{r stationary model selection}
+```{r stationary model selection, results in Table A3-B (Appendix)}
 Still_models <- list()
 Still_models[[1]] <- lmer(Dist ~ Lure*Ground + Cover + (1|ID), still, REML=FALSE)
 Still_models[[2]] <- lmer(Dist ~ Lure*Ground + (1|ID), still, REML=FALSE)
@@ -294,102 +423,6 @@ Still_models[[8]] <- lmer(Dist ~ Order + (1|ID), still, REML=FALSE)
   plot(Still_models[[5]])
   qqnorm(resid((Still_models[[5]])))
 ```
-
-Ratios of mismatched:matched attack distances at each experiment location (Appendix)
-```{r mismatch ratios}
-bmove <- filter(move, Ground=='B')
-wmove <- filter(move, Ground=='W')
-bstill <- filter(still, Ground=='B')
-bstill$Dist[bstill$Dist == 0] <- NA
-#bstill$Dist[bstill$Dist == 0] <- 1
-wstill <- filter(still, Ground=='W')
-bmf <- filter(mforest, Ground=='B')
-wmf <- filter(mforest, Ground=='W')
-bmo <- filter(mopen, Ground=='B')
-wmo <- filter(mopen, Ground=='W')
-bsf <- filter(bstill, Cover=='F')
-wsf <- filter(sforest, Ground=='W')
-bso <- filter(bstill, Cover=='F')
-wso <- filter(sopen, Ground=='W')
-
-camo_bmove <- subset(bmove, Lure=='B')
-mism_bmove <- subset(bmove, Lure=='W')
-merge_bmove <- merge(camo_bmove, mism_bmove, by='Loc', suffixes = c('_BB', '_WB'))
-merge_bmove$mmRatio <- merge_bmove$Dist_WB/merge_bmove$Dist_BB
-bmove_mmRatio <- mean(merge_bmove$mmRatio, na.rm=TRUE)
-
-camo_bstill <- subset(bstill, Lure=='B')
-mism_bstill <- subset(bstill, Lure=='W')
-merge_bstill <- merge(camo_bstill, mism_bstill, by='Loc', suffixes = c('_BB', '_WB'))
-merge_bstill$mmRatio <- merge_bstill$Dist_WB/merge_bstill$Dist_BB
-bstill_mmRatio <- mean(merge_bstill$mmRatio, na.rm=TRUE)
-
-camo_wmove <- subset(wmove, Lure=='W')
-mism_wmove <- subset(wmove, Lure=='B')
-merge_wmove <- merge(camo_wmove, mism_wmove, by='Loc', suffixes = c('_WW', '_BW'))
-merge_wmove$mmRatio <- merge_wmove$Dist_BW/merge_wmove$Dist_WW
-wmove_mmRatio <- mean(merge_wmove$mmRatio, na.rm=TRUE)
-
-camo_wstill <- subset(wstill, Lure=='W')
-mism_wstill <- subset(wstill, Lure=='B')
-merge_wstill <- merge(camo_wstill, mism_wstill, by='Loc', suffixes = c('_WW', '_BW'))
-merge_wstill$mmRatio <- merge_wstill$Dist_BW/merge_wstill$Dist_WW
-wstill_mmRatio <- mean(merge_wstill$mmRatio, na.rm=TRUE)
-
-camo_bmf <- subset(bmf, Lure=='B')
-mism_bmf <- subset(bmf, Lure=='W')
-merge_bmf <- merge(camo_bmf, mism_bmf, by='Loc', suffixes = c('_BB', '_WB'))
-merge_bmf$mmRatio <- merge_bmf$Dist_WB/merge_bmf$Dist_BB
-bmf_mmRatio <- mean(merge_bmf$mmRatio, na.rm=TRUE)
-
-camo_bmo <- subset(bmo, Lure=='B')
-mism_bmo <- subset(bmo, Lure=='W')
-merge_bmo <- merge(camo_bmo, mism_bmo, by='Loc', suffixes = c('_BB', '_WB'))
-merge_bmo$mmRatio <- merge_bmo$Dist_WB/merge_bmo$Dist_BB
-bmo_mmRatio <- mean(merge_bmo$mmRatio, na.rm=TRUE)
-
-camo_bsf <- subset(bsf, Lure=='B')
-mism_bsf <- subset(bsf, Lure=='W')
-merge_bsf <- merge(camo_bsf, mism_bsf, by='Loc', suffixes = c('_BB', '_WB'))
-merge_bsf$mmRatio <- merge_bsf$Dist_WB/merge_bsf$Dist_BB
-bsf_mmRatio <- mean(merge_bsf$mmRatio, na.rm=TRUE)
-
-camo_bso <- subset(bso, Lure=='B')
-mism_bso <- subset(bso, Lure=='W')
-merge_bso <- merge(camo_bso, mism_bso, by='Loc', suffixes = c('_BB', '_WB'))
-merge_bso$mmRatio <- merge_bso$Dist_WB/merge_bso$Dist_BB
-bso_mmRatio <- mean(merge_bso$mmRatio, na.rm=TRUE)
-
-camo_wmf <- subset(wmf, Lure=='W')
-mism_wmf <- subset(wmf, Lure=='B')
-merge_wmf <- merge(camo_wmf, mism_wmf, by='Loc', suffixes = c('_WW', '_BW'))
-merge_wmf$mmRatio <- merge_wmf$Dist_BW/merge_wmf$Dist_WW
-wmf_mmRatio <- mean(merge_wmf$mmRatio, na.rm=TRUE)
-
-camo_wmo <- subset(wmo, Lure=='W')
-mism_wmo <- subset(wmo, Lure=='B')
-merge_wmo <- merge(camo_wmo, mism_wmo, by='Loc', suffixes = c('_WW', '_BW'))
-merge_wmo$mmRatio <- merge_wmo$Dist_BW/merge_wmo$Dist_WW
-wmo_mmRatio <- mean(merge_wmo$mmRatio, na.rm=TRUE)
-
-camo_wsf <- subset(wsf, Lure=='W')
-mism_wsf <- subset(wsf, Lure=='B')
-merge_wsf <- merge(camo_wsf, mism_wsf, by='Loc', suffixes = c('_WW', '_BW'))
-merge_wsf$mmRatio <- merge_wsf$Dist_BW/merge_wsf$Dist_WW
-wsf_mmRatio <- mean(merge_wsf$mmRatio, na.rm=TRUE)
-
-camo_wso <- subset(wso, Lure=='W')
-mism_wso <- subset(wso, Lure=='B')
-merge_wso <- merge(camo_wso, mism_wso, by='Loc', suffixes = c('_WW', '_BW'))
-merge_wso$mmRatio <- merge_wso$Dist_BW/merge_wso$Dist_WW
-wso_mmRatio <- mean(merge_wso$mmRatio, na.rm=TRUE)
-
-
-mm_ratios <- c(bmove_mmRatio, bmf_mmRatio, bmo_mmRatio, wmove_mmRatio, wmf_mmRatio, wmo_mmRatio, bstill_mmRatio, bsf_mmRatio, bso_mmRatio, wstill_mmRatio, wsf_mmRatio, wso_mmRatio)
-ratio_labels <- c("Bare Ground Moving", "Bare Ground Moving, Forest", "Bare Ground Moving, Open", "Snow Moving", "Snow Moving, Forest", "Snow Moving, Open", "Bare Ground Stationary", "Bare Ground Stationary, Forest", "Bare Ground Stationary, Open", "Snow Stationary", "Snow Stationary, Forest", "Snow Stationary, Open")
-print(ratio_table <- data.frame(Label=ratio_labels, Value= mm_ratios))
-```
-
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
