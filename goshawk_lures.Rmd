@@ -309,6 +309,8 @@ plot_move <-
 
 plot_move
 
+ggsave("Fig2A_move.tiff", plot=plot_move,  scale=1, width = 7, height = 5, dpi = 300)
+
 still.frame <- data.frame(Color=as.factor(still$color),
                                 Distance=still$Dist,
                                 Cover=still$Cover,
@@ -327,6 +329,8 @@ plot_still <-
   scale_x_discrete(labels=c("Match", "Mismatch", "Mismatch", "Match"))
 
 plot_still
+
+ggsave("Fig2B_still.tiff", plot=plot_still,  scale=1, width = 7, height = 5, dpi = 300)
 ```
 
 ```{r Hawk Learning by Habitat, Figure 3: Hawk Learning over Time}
@@ -365,6 +369,8 @@ confint(learn_sforest)
 
 plot_move_learn
 
+ggsave("Fig3A_learnmove.tiff", plot=plot_move_learn,  scale=1, width = 7, height = 5, dpi = 300)
+
 #Figure 3: Hawk Learning over Time: Stationary Models
 plot_still_learn <- ggplot(still, aes(x = Order, y = Dist, group = ID, color = ID, shape = Cover)) + geom_point(size=2)+ theme_classic() + xlim(0,63) +
   xlab("Consecutive Trial Number") + ylab("Attack Distance (m)") + 
@@ -375,6 +381,8 @@ plot_still_learn <- ggplot(still, aes(x = Order, y = Dist, group = ID, color = I
   geom_abline(slope = 0.03924, intercept = 3.28573, linewidth=0.5, linetype=1, color="gray")
   
 plot_still_learn
+
+ggsave("Fig3B_learnstill.tiff", plot=plot_still_learn,  scale=1, width = 7, height = 5, dpi = 300)
 ```
 
 Model selection (Appendix)
