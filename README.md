@@ -5,19 +5,7 @@ This repository contains code and data for the project:
 
 **Citation**:
 
-**Authors**: Amanda Emmel (1*), Dr. Nate Bickford (2), Dr. L. Scott Mills (1)
-
-**Affiliations**
-
-1: Wildlife Biology Program, Department of Ecosystem and Conservation Sciences, University of Montana, Missoula MT 59812
-
-2: Natural Sciences Department, Oregon Institute of Technology, Klamath Falls OR 97601
-
-*correspondence to: emmel.amanda@gmail.com
-
-Data collection: Nate Bickford, Amanda Emmel
-
-Code: Amanda Emmel
+**Authors**: 
 
 In this study, we use falconry-trained goshawks (Accipiter atricapillus) to experimentally evaluate how raptors perceive white and brown lures in snowy and bare ground conditions and assess how motion and habitat influence attack distance. 
 
@@ -74,11 +62,11 @@ Packages: dplyr (version 1.1.4), ggplot2 (version 3.5.1), AICcmodavg (version 2.
 
 **PERMITTING**
 
-All experimental protocols were approved through the University of Montana Institutional Care and Use Committee (Protocols No. 028-21SMRCS-051121, 000-000A-029). Participating falconry goshawks were privately owned and cared for.
+All experimental protocols were approved through the XXXXX Institutional Care and Use Committee (Protocols No. 028-21SMRCS-051121, 000-000A-029). Participating falconry goshawks were privately owned and cared for.
 
 **FUNDING**
 
-Funding for this work provided by National Science Foundation Division of Environmental Biology Grant 1907022 to Dr. L. Scott Mills
+Funding for this work provided by National Science Foundation Division of Environmental Biology Grant 1907022 to XXXXX
 
 
 
